@@ -44,19 +44,29 @@ All evasion features are individually toggleable at build time.
 ```
 HellForge/
 ├── src/                  C loader template (Windows x64, MinGW-w64)
-├── build.c               CLI build orchestrator (Mac / Linux / Windows)
-├── gui.c                 Native Win32 GUI front-end (Windows only)
-├── gui_build.c           Win32 GUI build logic
-├── gui_gen.c             Win32 GUI payload generation
-├── hellforge-gui/        Rust + egui cross-platform GUI
-├── hellforge.py          Python / tkinter GUI fallback (Mac / Linux)
+├── hellforge-build/      Rust CLI build orchestrator  ← hfbuild binary
+│   └── src/
+│       ├── main.rs       arg parsing, build flow, RAII temp dirs
+│       ├── crypto.rs     RC4, key obfuscation, rand_bytes
+│       ├── codegen.rs    generates loader_config.h + loader_payload.c
+│       ├── compiler.rs   MinGW-w64 assemble / compile / link pipeline
+│       └── config.rs     BuildConfig struct and CLI usage
+├── hellforge-gui/        Rust + egui cross-platform GUI  ← hellforge binary
+│   └── src/
+│       ├── main.rs       entry point
+│       ├── app.rs        egui app state and UI
+│       ├── runner.rs     spawns hfbuild, streams stdout/stderr to log
+│       ├── msf.rs        msfvenom generation dialog
+│       └── types.rs      shared types
+├── gui.c                 Native Win32 GUI (Windows only, legacy)
+├── hellforge.py          Python / tkinter GUI fallback (Mac / Linux, legacy)
 └── tools/
     ├── sRDI_builder      sRDI conversion tool
     ├── reflective_loader.dll
     └── setup_srdi.sh     Builds sRDI tooling
 ```
 
-`build.c` is the core orchestrator. It reads the raw payload, RC4-encrypts it, generates `loader_config.h` and `loader_payload.c` from the selected options, then invokes MinGW-w64 to compile. The output is always a Windows x64 PE regardless of the host OS.
+`hellforge-build` is the core orchestrator. It reads the raw payload, RC4-encrypts it, generates `loader_config.h` and `loader_payload.c` from the selected options, then invokes MinGW-w64 to cross-compile. The output is always a Windows x64 PE regardless of the host OS.
 
 ---
 
@@ -86,26 +96,33 @@ bash tools/setup_srdi.sh
 
 ## Build Instructions
 
-### Build the CLI tool
+### Requirements
 
 ```sh
-# Linux / macOS
-gcc -O2 -o build build.c
+# macOS
+brew install mingw-w64 rust
 
-# Windows
-gcc -O2 -o build.exe build.c
+# Debian / Ubuntu
+sudo apt install mingw-w64 && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-### Build the Rust GUI
+### Build both tools (from project root)
 
 ```sh
-cd hellforge-gui
-
-# Native (current platform)
 cargo build --release
+# Produces:
+#   target/release/hfbuild   — CLI build orchestrator
+#   target/release/hellforge  — cross-platform GUI
+```
 
-# Cross-compile to Windows
-cargo build --release --target x86_64-pc-windows-gnu
+### Run individually
+
+```sh
+# CLI only
+cargo build --release -p hellforge-build
+
+# GUI only
+cargo build --release -p hellforge-gui
 ```
 
 ---
@@ -115,7 +132,7 @@ cargo build --release --target x86_64-pc-windows-gnu
 ### CLI
 
 ```
-./build --payload <shellcode.bin> [options]
+./hfbuild --payload <shellcode.bin> [options]
 ```
 
 | Flag | Description |
@@ -139,30 +156,30 @@ Output is written to `./output/`.
 
 ```sh
 # Self-injection with ETW patch and ntdll unhook
-./build --payload beacon.bin --etw-patch --unhook --out beacon_loader
+./hfbuild --payload beacon.bin --etw-patch --unhook --out beacon_loader
 
 # Remote injection into explorer.exe with Early Bird APC and sleep obfuscation
-./build --payload beacon.bin --target explorer.exe --inject early-bird \
-        --spawn "C:\\Windows\\System32\\notepad.exe" --sleep-obf --out beacon_loader
+./hfbuild --payload beacon.bin --target explorer.exe --inject early-bird \
+          --spawn "C:\\Windows\\System32\\notepad.exe" --sleep-obf --out beacon_loader
 
 # DLL payload via sRDI, self-inject, all evasion on
-./build --dll implant.dll --etw-patch --unhook --sleep-obf --out implant_loader
+./hfbuild --dll implant.dll --etw-patch --unhook --sleep-obf --out implant_loader
 ```
 
 ### GUI
 
 **Rust / egui (cross-platform — recommended):**
 ```sh
-cd hellforge-gui && cargo run --release
-# or run the compiled binary from hellforge-gui/target/release/
+cargo run --release -p hellforge-gui
+# or place hfbuild and hellforge binaries in the same directory and run hellforge
 ```
 
-**Python / tkinter (Mac / Linux fallback):**
+**Python / tkinter (Mac / Linux legacy fallback):**
 ```sh
 python3 hellforge.py
 ```
 
-**Native Win32 GUI (Windows only):**
+**Native Win32 GUI (Windows only, legacy):**
 Compile `gui.c` with MinGW-w64 or open in your preferred Windows build environment.
 
 ---
