@@ -51,8 +51,8 @@ impl HellForge {
 
         let build_bin = std::env::current_exe()
             .ok()
-            .and_then(|p| p.parent().map(|d| d.join("build")))
-            .unwrap_or_else(|| PathBuf::from("build"));
+            .and_then(|p| p.parent().map(|d| d.join("hfbuild")))
+            .unwrap_or_else(|| PathBuf::from("hfbuild"));
 
         Self {
             use_dll:      false,

@@ -11,9 +11,3 @@ path = "src/main.rs"
 eframe = "0.29"
 egui   = "0.29"
 rfd    = "0.15"
-
-[profile.release]
-opt-level = "z"
-lto       = true
-strip     = true
-panic     = "abort"

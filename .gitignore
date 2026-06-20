@@ -1,12 +1,11 @@
 # ── Build artifacts ──────────────────────────────────────────────────────────
 output/
 x64/
-# compiled build tool binaries
-build
-build.exe
 
 # ── Rust ─────────────────────────────────────────────────────────────────────
+target/
 hellforge-gui/target/
+hellforge-build/target/
 
 # ── Visual Studio ────────────────────────────────────────────────────────────
 .vs/
