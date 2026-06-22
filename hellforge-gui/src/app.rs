@@ -248,19 +248,7 @@ impl eframe::App for HellForge {
             ui.add_space(4.0);
 
             // ── Log ──────────────────────────────────────────────────────────
-            let mut log_snap = self.log.lock().unwrap().clone();
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .stick_to_bottom(true)
-                .show(ui, |ui| {
-                    ui.add(
-                        egui::TextEdit::multiline(&mut log_snap)
-                            .font(egui::TextStyle::Monospace)
-                            .desired_width(f32::INFINITY)
-                            .desired_rows(14)
-                            .interactive(false),
-                    );
-                });
+            crate::logger::show(ui, &self.log);
         });
     }
 }

@@ -1,6 +1,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod app;
+mod injection;
+mod logger;
 mod msf;
 mod runner;
 mod types;

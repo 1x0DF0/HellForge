@@ -6,6 +6,8 @@ pub type Log = Arc<Mutex<String>>;
 pub enum BuildState {
     Idle,
     Running,
+    Building,
+    TaskSuspended,
 }
 
 pub const PAYLOAD_TYPES: &[&str] = &[
