@@ -1,0 +1,15 @@
+[package]
+name    = "hellforge-loader"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "loader"
+path = "src/main.rs"
+
+[features]
+etw_patch       = []
+unhook_disk     = []
+early_bird      = []
+anti_analysis   = []
+sleep_obf       = []

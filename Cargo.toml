@@ -1,9 +1,10 @@
 [workspace]
-members  = ["hellforge-build", "hellforge-gui"]
+members  = ["hellforge-build", "hellforge-gui", "hellforge-loader"]
 resolver = "2"
 
 [profile.release]
-opt-level = "z"
-lto       = true
-strip     = true
-panic     = "abort"
+opt-level     = "z"
+lto           = true
+strip         = true
+panic         = "abort"
+codegen-units = 1
